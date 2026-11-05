@@ -672,23 +672,29 @@ function usHolidays(y) {
    ========================================================= */
 const KEY = 'travel-calendar-v1';
 const TODAY = new Date();
+/* Example plan built around today's date on the visitor's computer, so the template is always current */
 function sampleState() {
+  const t0 = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const mon = addDays(t0, ((8 - t0.getDay()) % 7) || 7); // next Monday
+  const D = n => iso(addDays(mon, n));
+  const ym = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  const first = new Date(t0.getFullYear(), t0.getMonth(), 1), last = addDays(mon, 25);
+  const span = Math.min(3, Math.max(2, (last.getFullYear() - first.getFullYear()) * 12 + last.getMonth() - first.getMonth() + 1));
   return {
-    title: 'Travel Plan', name: '', start: '2026-11', end: '2026-12', weekStart: 0,
+    title: 'Travel Plan', name: '', start: ym(first), end: ym(new Date(first.getFullYear(), first.getMonth() + span - 1, 1)), weekStart: 0,
     showCN: true, showUS: true, cnLang: 'en', lastCat: 'travel', lastColor: KEY_COLORS[0],
     entries: [
-      { id: uid(), type: 'flight',  start: '2026-11-15', end: '2026-11-15', note: 'LAX → PVG · UA857' },
-      { id: uid(), type: 'travel',  start: '2026-11-16', end: '2026-11-20', note: 'Shanghai' },
-      { id: uid(), type: 'flight',  start: '2026-11-21', end: '2026-11-21', note: 'PVG → LAX · UA858' },
-      { id: uid(), type: 'key',     start: '2026-11-17', end: '2026-11-19', note: 'Tooling T1 trial', color: '#FF9500' },
-      { id: uid(), type: 'key',     start: '2026-11-18', end: '2026-11-18', note: 'Supplier review', color: '#FF2D55' },
-      { id: uid(), type: 'wfh',     start: '2026-11-23', end: '2026-11-25', note: 'Irvine' },
-      { id: uid(), type: 'holiday', start: '2026-11-26', end: '2026-11-27', note: 'Thanksgiving' },
-      { id: uid(), type: 'travel',  start: '2026-11-30', end: '2026-12-04', note: 'Shenzhen' },
-      { id: uid(), type: 'key',     start: '2026-12-02', end: '2026-12-02', note: 'Factory audit', color: '#30B0C7' },
-      { id: uid(), type: 'key',     start: '2026-12-07', end: '2026-12-11', note: 'EVT build', color: '#5856D6' },
-      { id: uid(), type: 'key',     start: '2026-12-10', end: '2026-12-10', note: 'Quarterly review', color: '#FF3B30' },
-      { id: uid(), type: 'ooo',     start: '2026-12-21', end: '2026-12-31', note: 'Year-end vacation' },
+      { id: uid(), type: 'flight', start: D(-1), end: D(-1), note: 'LAX → PVG · UA857' },
+      { id: uid(), type: 'travel', start: D(0),  end: D(4),  note: 'Shanghai' },
+      { id: uid(), type: 'key',    start: D(1),  end: D(3),  note: 'Tooling T1 trial', color: '#FF9500' },
+      { id: uid(), type: 'key',    start: D(2),  end: D(2),  note: 'Supplier review', color: '#FF2D55' },
+      { id: uid(), type: 'flight', start: D(5),  end: D(5),  note: 'PVG → LAX · UA858' },
+      { id: uid(), type: 'wfh',    start: D(7),  end: D(9),  note: 'Irvine' },
+      { id: uid(), type: 'travel', start: D(14), end: D(18), note: 'Shenzhen' },
+      { id: uid(), type: 'key',    start: D(16), end: D(16), note: 'Factory audit', color: '#30B0C7' },
+      { id: uid(), type: 'key',    start: D(21), end: D(25), note: 'EVT build', color: '#5856D6' },
+      { id: uid(), type: 'key',    start: D(24), end: D(24), note: 'Quarterly review', color: '#FF3B30' },
+      { id: uid(), type: 'ooo',    start: D(28), end: D(32), note: 'Vacation' },
     ],
   };
 }

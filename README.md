@@ -2,7 +2,9 @@
 
 A single-file, Apple-style calendar for turning a travel plan into a clean image and table you can send to your manager.
 
-Open `travel-calendar.html` in any browser. No build step, no server.
+**Live:** https://imperator28.github.io/TravelCalendar/
+
+Or open `index.html` in any browser. No build step, no server. First visit shows an example plan built around today's date; use **New calendar** to start blank.
 
 ## What it does
 
