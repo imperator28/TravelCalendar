@@ -23,12 +23,13 @@ Single HTML file · No sign-up · No install · Your data stays in your browser
 - **Holidays built in.** China public holidays (official schedules, including make-up workdays) and US federal holidays. Show either, both or none.
 - **Share-ready output.** A crisp 2× PNG sized to the content, or copy the plan as a list, a real table, Markdown or an image.
 - **Fits the story.** Show 1, 2 or 3 months. Legend on the side, below, or Auto. Dates as `Mon, Nov 16`, `MM/DD` or `MM/DD/YYYY`.
+- **Works with your calendar app.** Export everything as an `.ics` file for Apple Calendar, Google Calendar or Outlook. Import an `.ics` from your own calendar: trips, flights, time off and WFH days are recognized automatically, and you choose what comes in.
 - **Many calendars.** Keep several plans side by side, autosaved, with file export and import to back up or move them.
 
 ## Getting started
 
 1. **Open the app.** A sample plan built around today's date shows what's possible.
-2. **Make it yours.** Edit the sample, or choose **New calendar** to start blank.
+2. **Make it yours.** Edit the sample, choose **New calendar** to start blank, or **Import from calendar** to bring in events you already have.
 3. **Share it.** **Download PNG** for a picture, or **Copy table** / **Copy text** for a message.
 
 ## Made for
@@ -48,6 +49,7 @@ Single HTML file · No sign-up · No install · Your data stays in your browser
 | Email, Docs, Notion, Teams, Lark | **Copy table** |
 | Excel, Google Sheets | **Copy table** (pastes into cells) |
 | Slides, wikis, anywhere else | **Download PNG** |
+| Apple Calendar, Google Calendar, Outlook | **Export to calendar (.ics)** |
 
 ## Privacy
 
