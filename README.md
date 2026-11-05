@@ -1,25 +1,60 @@
+<div align="center">
+
 # Travel Calendar
 
-A single-file, Apple-style calendar for turning a travel plan into a clean image and table you can send to your manager.
+**Plan it. See it. Share it.**
 
-**Live:** https://imperator28.github.io/TravelCalendar/
+A polished month calendar for trips, remote days, time off and milestones,
+ready to drop into any chat, email or doc.
 
-Or open `index.html` in any browser. No build step, no server. First visit shows an example plan built around today's date; use **New calendar** to start blank.
+[**Open the app →**](https://imperator28.github.io/TravelCalendar/)
 
-## What it does
+Single HTML file · No sign-up · No install · Your data stays in your browser
 
-- **Statuses as day bands:** Traveling for work, Working from home, Out of office, Public holiday. Travel and WFH carry a location (map pin).
-- **Flights** as plane chips with the route (`LAX → PVG · UA857`); the flight number shows in the legend and table.
-- **Key dates and key periods** (EVT, PVT, builds, reviews) in any of 8 colors. Overlapping items stack; long labels wrap; every week row shares one height.
-- **Holidays:** China public holidays (official 2025–2026 schedules, including make-up workdays; 2027 statutory dates until published) and US federal holidays, each toggleable, tagged CN / US.
-- **Fast input:** click a day or drag across days, then pick the category. Drag any item to move it. Click to edit. Undo on move and delete.
-- **1, 2 or 3 months** (up to 12 with the steppers). Legend on the right, below, or Auto.
-- **Export:** Copy image / Download PNG at 2x, sized to the content.
-- **Share:** a table you can copy as plain text (Slack, WeChat), a real table (email, Docs, Notion, Teams, Excel), Markdown, or an image. Dates as `Mon, Nov 16`, `MM/DD` or `MM/DD/YYYY`.
-- **Saved calendars:** several calendars kept in the browser, plus Export file / Open file (`.json`) to back up or move them.
+</div>
 
-## Notes
+---
 
-- Data lives in the browser's local storage for the page's origin. Use **Export file** to keep a copy.
-- PNG export uses [html-to-image](https://github.com/bubkoo/html-to-image) from jsDelivr; offline, take a screenshot instead.
-- Holiday data is in the `CN` table and `usHolidays()` in the script. Update the `CN` table when the State Council publishes a new year's schedule.
+## Highlights
+
+- **Click, drag, done.** Click a day or sweep across several, then choose what it is. Drag anything to move it; undo is one tap away.
+- **Everything has its place.** Color bands for travel, working from home, out of office and holidays, each with an optional location. Flights get their own ✈︎ chip with the route.
+- **Milestones that stack.** Key dates and multi-day periods in eight colors. Overlaps stack neatly, long names wrap, and every week stays the same height.
+- **Holidays built in.** China public holidays (official schedules, including make-up workdays) and US federal holidays. Show either, both or none.
+- **Share-ready output.** A crisp 2× PNG sized to the content, or copy the plan as a list, a real table, Markdown or an image.
+- **Fits the story.** Show 1, 2 or 3 months. Legend on the side, below, or Auto. Dates as `Mon, Nov 16`, `MM/DD` or `MM/DD/YYYY`.
+- **Many calendars.** Keep several plans side by side, autosaved, with file export and import to back up or move them.
+
+## Getting started
+
+1. **Open the app.** A sample plan built around today's date shows what's possible.
+2. **Make it yours.** Edit the sample, or choose **New calendar** to start blank.
+3. **Share it.** **Download PNG** for a picture, or **Copy table** / **Copy text** for a message.
+
+## Made for
+
+| | |
+|---|---|
+| ✈︎ **Work trips** | Where you'll be, when you fly, and what's happening on site |
+| 🏠 **Availability** | Remote days, time off and public holidays across regions |
+| 🛠 **Project schedules** | Builds, reviews and deadlines on one clear timeline |
+| 🎒 **Trips with friends** | Who's flying when and where everyone is staying |
+
+## Sharing at a glance
+
+| Destination | Best option |
+|---|---|
+| Slack, WeChat, iMessage | **Copy text** or **Copy image** |
+| Email, Docs, Notion, Teams, Lark | **Copy table** |
+| Excel, Google Sheets | **Copy table** (pastes into cells) |
+| Slides, wikis, anywhere else | **Download PNG** |
+
+## Privacy
+
+Calendars are stored only in your browser. Nothing is uploaded or tracked. Use **Export file** to keep a copy or move it to another device.
+
+## For developers
+
+- One self-contained `index.html`: plain HTML, CSS and JavaScript, no build step.
+- PNG export uses [html-to-image](https://github.com/bubkoo/html-to-image) from jsDelivr. Everything else works offline.
+- Holiday data lives in the `CN` table and `usHolidays()` in the script. Add each new year's China schedule when it is published; until then the calendar shows statutory dates marked *est.*
