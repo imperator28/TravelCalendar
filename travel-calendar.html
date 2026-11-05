@@ -1,0 +1,1553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Travel Calendar</title>
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --label: #1D1D1F;
+  --label-2: #6E6E73;
+  --label-3: #A1A1A6;
+  --sep: rgba(60, 60, 67, 0.12);
+  --sep-strong: rgba(60, 60, 67, 0.2);
+  --fill: rgba(118, 118, 128, 0.12);
+  --fill-2: rgba(118, 118, 128, 0.07);
+  --blue: #007AFF;
+  --green: #34C759;
+  --red: #FF3B30;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--label);
+  font: 14px/1.4 var(--font);
+  -webkit-font-smoothing: antialiased; font-feature-settings: "tnum" 1;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+
+/* ---------- App shell ---------- */
+.app { display: grid; grid-template-columns: var(--side-w, 320px) minmax(0, 1fr); min-height: 100vh; }
+/* sidebar resize handle: drag to resize, double-click to reset */
+.resizer { position: fixed; top: 0; bottom: 0; left: calc(var(--side-w, 320px) - 4px); width: 8px; z-index: 30; cursor: col-resize; touch-action: none; }
+.resizer::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: var(--blue);
+  opacity: 0; transition: opacity 150ms var(--ease);
+}
+.resizer:hover::after, .resizer.active::after { opacity: 1; transition-delay: 80ms; }
+.resizing, .resizing * { cursor: col-resize !important; user-select: none !important; }
+.side {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  padding: 20px 16px 40px; border-right: 1px solid var(--sep); background: #F7F7FA;
+}
+.main { padding: 20px 32px 64px; min-width: 0; }
+
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 14px; }
+.brand-icon {
+  width: 30px; height: 30px; border-radius: 7px; background: var(--surface);
+  box-shadow: 0 0 0 1px var(--sep), 0 1px 2px rgba(0,0,0,0.06);
+  display: grid; grid-template-rows: 9px 1fr; overflow: hidden; text-align: center;
+}
+.brand-icon b { background: var(--red); color: #fff; font-size: 6.5px; line-height: 9px; letter-spacing: 0.04em; font-weight: 700; }
+.brand-icon span { font-size: 14px; font-weight: 600; line-height: 20px; letter-spacing: -0.02em; }
+.brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+
+.section-title {
+  margin: 22px 12px 7px; font-size: 12px; font-weight: 600; color: var(--label-2);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.section-title button { border: 0; background: none; color: var(--blue); font-size: 12px; font-weight: 500; padding: 0; }
+.group { background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 0.5px var(--sep); overflow: hidden; }
+.row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 44px; padding: 7px 12px 7px 14px; position: relative;
+}
+.row + .row::before { content: ""; position: absolute; top: 0; left: 14px; right: 0; height: 1px; background: var(--sep); }
+.row > label, .row > .lbl { white-space: nowrap; }
+.hint { font-size: 12px; color: var(--label-2); margin: 7px 14px 0; line-height: 1.45; }
+.field { border: 0; background: transparent; text-align: right; min-width: 0; flex: 1; outline: none; padding: 4px 0; }
+.field::placeholder { color: var(--label-3); }
+
+.stepper { display: inline-flex; align-items: center; gap: 2px; }
+.stepper span { min-width: 76px; text-align: center; font-weight: 500; color: var(--blue); }
+.stepper button {
+  width: 28px; height: 28px; border-radius: 8px; border: 0; background: transparent; color: var(--label-2);
+  display: grid; place-items: center; transition: background-color 150ms var(--ease), transform 100ms var(--ease);
+}
+.stepper button:hover { background: var(--fill); }
+.stepper button:active { transform: scale(0.92); }
+
+/* Segmented control */
+.seg { display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; }
+.seg label { position: relative; min-width: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  height: 28px; padding: 0 6px; border-radius: 7px; font-size: 12.5px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; user-select: none;
+  transition: background-color 180ms var(--ease), box-shadow 180ms var(--ease);
+}
+.seg input:checked + span { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.04); }
+.seg input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 1px; }
+.seg.small span { height: 24px; font-size: 12px; padding: 0 10px; }
+.seg i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+.seg i.multi { background: conic-gradient(#FF2D55 0 25%, #FF9500 0 50%, #30B0C7 0 75%, #5856D6 0); }
+
+/* Switch */
+.switch { position: relative; width: 51px; height: 31px; flex: none; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.switch span { position: absolute; inset: 0; border-radius: 999px; background: rgba(120,120,128,0.16); transition: background-color 200ms var(--ease); }
+.switch span::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+  background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.16); transition: transform 220ms var(--ease);
+}
+.switch input:checked + span { background: var(--green); }
+.switch input:checked + span::after { transform: translateX(20px); }
+.switch input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
+.lbl-sw { display: flex; align-items: center; gap: 9px; }
+
+/* CN / US tag: the one marker for holidays everywhere */
+.tag {
+  display: inline-flex; align-items: center; justify-content: center; height: 16px; padding: 0 4px; border-radius: 4px; white-space: nowrap;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; line-height: 1;
+  color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); flex: none;
+}
+
+/* Swatches */
+.swatches { display: flex; gap: 9px; flex-wrap: wrap; }
+.swatches label { position: relative; }
+.swatches input { position: absolute; opacity: 0; pointer-events: none; }
+.swatches span {
+  display: block; width: 22px; height: 22px; border-radius: 50%; background: var(--c); cursor: pointer;
+  transition: transform 120ms var(--ease), box-shadow 150ms var(--ease);
+}
+.swatches input:checked + span { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--c); }
+.swatches input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 4px; }
+.swatches span:active { transform: scale(0.9); }
+
+/* Buttons */
+.btn {
+  border: 0; border-radius: 10px; height: 34px; padding: 0 14px; font-size: 13px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap;
+  background: var(--fill); color: var(--label);
+  transition: background-color 150ms var(--ease), transform 100ms var(--ease);
+}
+.btn:hover { background: rgba(118,118,128,0.18); }
+.btn:active { transform: scale(0.97); }
+.btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.btn.primary { background: var(--blue); color: #fff; }
+.btn.primary:hover { background: #0071EB; }
+.btn.danger { background: transparent; color: var(--red); padding: 0 8px; }
+.btn.danger:hover { background: rgba(255,59,48,0.08); }
+.btn.block { width: 100%; height: 38px; }
+.btn svg { width: 15px; height: 15px; }
+.btn-row { display: flex; gap: 8px; }
+
+/* Entry list */
+.list { list-style: none; margin: 0; padding: 0; }
+.item { display: flex; align-items: center; gap: 11px; padding: 9px 8px 9px 14px; position: relative; cursor: pointer; transition: background-color 150ms var(--ease); }
+.item:hover { background: var(--fill-2); }
+.item + .item::before { content: ""; position: absolute; top: 0; left: 35px; right: 0; height: 1px; background: var(--sep); }
+.mk { flex: none; width: 10px; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--c) 30%, white); box-shadow: inset 0 0 0 1.5px var(--c); }
+.mk.dot { border-radius: 50%; background: var(--c); box-shadow: none; }
+.mk.period { border-radius: 3px; background: var(--c); box-shadow: none; height: 6px; }
+.item .tx { flex: 1; min-width: 0; }
+.item .t1 { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .t2 { font-size: 12px; color: var(--label-2); }
+.item.out .tx { opacity: 0.5; }
+.item.editing { background: rgba(0,122,255,0.07); }
+.icon-btn {
+  width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--label-3);
+  display: grid; place-items: center; flex: none; transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+.icon-btn:hover { background: var(--fill); color: var(--red); }
+.icon-btn svg { width: 14px; height: 14px; }
+.empty-list { padding: 16px 14px; color: var(--label-2); font-size: 13px; }
+
+/* ---------- Main ---------- */
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 auto 18px; max-width: 1180px; }
+.bar p { margin: 0; color: var(--label-2); font-size: 13px; }
+
+.card {
+  max-width: 1180px; margin: 0 auto; background: var(--surface); border-radius: 22px;
+  box-shadow: 0 0 0 0.5px rgba(0,0,0,0.06), 0 12px 40px -12px rgba(0,0,0,0.12);
+  padding: 34px 36px 24px;
+}
+.card-head { padding-bottom: 22px; }
+.card-head h2 { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: -0.025em; }
+.card-head .sub { margin-top: 6px; font-size: 15px; color: var(--label-2); }
+.card-body { display: grid; grid-template-columns: minmax(0, 1fr) 256px; gap: 36px; align-items: start; }
+
+/* Months */
+.months {
+  display: grid; gap: 28px 32px; align-content: start;
+  --base: 92px; --top: 31px; --lane: 19px; --barh: 17px; --holh: 14px; --pad: 9px;
+  --num: 15px; --fs: 11.5px; --hfs: 11px; --x: 10px;
+}
+.months.multi {
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  --base: 66px; --top: 26px; --lane: 16px; --barh: 14px; --holh: 12px; --pad: 7px;
+  --num: 12.5px; --fs: 10px; --hfs: 9.5px; --x: 7px;
+}
+.mhead { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px 2px; }
+.mhead .y { color: var(--label-3); font-weight: 600; }
+.multi .mhead { font-size: 16px; margin-bottom: 8px; }
+.dow { display: grid; grid-template-columns: repeat(7, 1fr); padding-bottom: 6px; }
+.dow span { font-size: 10.5px; font-weight: 600; color: var(--label-2); text-transform: uppercase; letter-spacing: 0.04em; padding-left: var(--x); }
+.dow span.we { color: var(--label-3); }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); }
+
+.cell {
+  position: relative; min-width: 0; border-top: 1px solid var(--sep); cursor: pointer; outline: none; user-select: none;
+  height: calc(var(--cellh, var(--base)) + var(--boost, 0px)); /* every week row shares one height */
+}
+.cell.empty { cursor: default; }
+.band { position: absolute; top: 4px; bottom: 4px; left: 0; right: 0; background: color-mix(in srgb, var(--c) 14%, transparent); }
+.band.s { left: 3px; border-top-left-radius: 9px; border-bottom-left-radius: 9px; }
+.band.e { right: 3px; border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
+.num { position: absolute; top: 10px; left: var(--x); font-size: var(--num); font-weight: 500; letter-spacing: -0.01em; line-height: 1; }
+.cell.we .num { color: var(--label-3); }
+.cell.hol .num { color: var(--hc); font-weight: 600; }
+.cell.has .num { color: color-mix(in srgb, var(--c) 72%, #000); font-weight: 600; }
+.dots { position: absolute; z-index: 4; top: 9px; right: 8px; display: flex; gap: 3px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1.5px var(--surface); }
+.multi .dots { top: 7px; right: 5px; gap: 2px; }
+.multi .dots i { width: 6px; height: 6px; box-shadow: 0 0 0 1px var(--surface); }
+
+/* status label: its own line under the day numbers */
+.note {
+  position: absolute; z-index: 2; top: var(--top); left: var(--x); font-size: var(--fs);
+  width: calc(var(--span) * 100% - var(--x) - 6px); min-height: var(--barh);
+  line-height: calc(var(--barh) - 2px); padding: 1px 0;
+  font-weight: 600; color: color-mix(in srgb, var(--c) 72%, #000); overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.note svg { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.14em; margin-right: 2px; }
+.note b { font-weight: inherit; }
+
+/* key periods (bars) and key days (labels), stacked in lanes */
+.kbar, .kline {
+  position: absolute; z-index: 3; top: calc(var(--top) + (var(--nl, 0) + var(--l)) * var(--lane)); min-height: var(--barh);
+  font-size: var(--fs); line-height: calc(var(--barh) - 2px); padding-top: 1px; padding-bottom: 1px; font-weight: 600;
+  overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+}
+.kbar {
+  --il: 0px; --ir: 0px; left: var(--il); width: calc(var(--span) * 100% - var(--il) - var(--ir));
+  padding: 0 6px; background: color-mix(in srgb, var(--c) 24%, white); color: color-mix(in srgb, var(--c) 62%, #000);
+  box-shadow: 0 0 0 1px var(--surface);
+}
+.kbar.s { --il: 3px; border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
+.kbar.e { --ir: 3px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; }
+.kline { left: var(--x); width: calc(var(--span) * 100% - var(--x) - 6px); color: color-mix(in srgb, var(--c) 66%, #000); }
+.kbar:hover, .kline:hover { filter: brightness(0.94); }
+/* flights: a white ticket-like chip with a plane, so they never read as a location */
+.kline.flight, .kbar.flight {
+  background: var(--surface); color: color-mix(in srgb, var(--c) 70%, #000);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 32%, transparent), 0 1px 2px rgba(0,0,0,0.06);
+}
+.kline.flight { left: calc(var(--x) - 3px); width: max-content; max-width: calc(var(--span) * 100% - var(--x) - 4px); border-radius: 5px; padding: 0 6px 0 4px; }
+.kline.rtl { left: auto; right: 6px; text-align: right; width: calc(var(--span) * 100% - var(--x) - 6px); }
+.kline.flight.rtl { right: 3px; left: auto; width: max-content; }
+.kline.flight svg, .kbar.flight svg { width: 1.05em; height: 1.05em; fill: currentColor; vertical-align: -0.17em; margin-right: 3px; }
+.kline.flight b, .kbar.flight b { font-weight: inherit; }
+
+.hname {
+  position: absolute; z-index: 2; left: var(--x); bottom: calc(var(--pad) + var(--i) * var(--holh) - 2px);
+  width: calc(var(--span) * 100% - var(--x) - 6px); font-size: var(--hfs); font-weight: 500; color: var(--c);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: var(--holh);
+}
+.hname.work { color: var(--label-2); }
+
+/* hover + range selection */
+.cell:not(.empty)::after { content: ""; position: absolute; inset: 4px 2px; border-radius: 9px; pointer-events: none; transition: background-color 120ms; }
+.cell:not(.empty):hover::after { background: var(--fill-2); }
+.cell.pick::after {
+  inset: 4px 0; border-radius: 0; background: rgba(0,122,255,0.08);
+  border-top: 1.5px solid rgba(0,122,255,0.5); border-bottom: 1.5px solid rgba(0,122,255,0.5);
+}
+.cell.pick.ps::after { left: 3px; border-left: 1.5px solid rgba(0,122,255,0.5); border-top-left-radius: 9px; border-bottom-left-radius: 9px; }
+.cell.pick.pe::after { right: 3px; border-right: 1.5px solid rgba(0,122,255,0.5); border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
+.cell:focus-visible::after { box-shadow: inset 0 0 0 2px var(--blue); }
+.exporting .cell::after { display: none !important; }
+.dragging, .dragging * { cursor: crosshair !important; }
+
+/* Legend */
+.legend { border-left: 1px solid var(--sep); padding-left: 28px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.lg h3 { margin: 0 0 10px; font-size: 11px; font-weight: 600; color: var(--label-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.lg ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lg li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: baseline; gap: 0 10px; font-size: 13px; line-height: 1.3; }
+.lg li .k { color: var(--label-2); font-size: 12px; white-space: nowrap; }
+.lg li .t { min-width: 0; }
+.lg li .t small { display: block; color: var(--label-2); font-size: 12px; }
+.lg li.off { opacity: 0.4; }
+.lg li > :first-child { align-self: center; }
+.sw-band { width: 26px; height: 16px; border-radius: 5px; background: color-mix(in srgb, var(--c) 14%, transparent); position: relative; }
+.sw-band::after { content: ""; position: absolute; left: 5px; top: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.sw-ic, .mk-ic { display: inline-flex; color: var(--c); justify-self: center; flex: none; }
+.sw-ic svg { width: 14px; height: 14px; fill: currentColor; }
+.mk-ic svg { width: 12px; height: 12px; fill: currentColor; }
+.sw-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); justify-self: center; }
+.sw-bar { width: 22px; height: 9px; border-radius: 3px; background: color-mix(in srgb, var(--c) 24%, white); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, white); justify-self: center; }
+.lg li .tag { justify-self: center; }
+.lg li.hol .t b { font-weight: 500; }
+.lg li.hol .t span { color: var(--label-2); font-size: 12px; }
+.lg .fine { font-size: 11px; color: var(--label-3); line-height: 1.4; margin: 6px 0 0 38px; }
+.card-foot { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--sep); display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--label-3); }
+.exporting .card { box-shadow: none; border-radius: 0; max-width: none; }
+
+/* three months across, legend underneath */
+.card.three, .card.below { max-width: 1480px; }
+.months.three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.card.three .card-body, .card.below .card-body { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+.card.three .legend, .card.below .legend {
+  border-left: 0; padding-left: 0; border-top: 1px solid var(--sep); padding-top: 22px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 22px 32px;
+}
+
+/* move by dragging */
+#months [data-id] { cursor: grab; }
+.moving, .moving * { cursor: grabbing !important; user-select: none; }
+#months .lifted { box-shadow: 0 6px 16px -4px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.04) !important; z-index: 6; }
+#months .note.lifted { background: var(--surface); border-radius: 5px; padding: 0 4px; }
+
+/* saved calendars */
+.cal .ck { width: 16px; flex: none; color: var(--blue); display: grid; place-items: center; }
+.cal .ck svg { width: 14px; height: 14px; }
+.cal.current .t1 { font-weight: 600; }
+.cal-actions { display: flex; border-top: 1px solid var(--sep); }
+.cal-actions button {
+  flex: 1; border: 0; background: none; color: var(--blue); font-size: 12.5px; font-weight: 500; height: 38px;
+  transition: background-color 150ms var(--ease);
+}
+.cal-actions button + button { border-left: 1px solid var(--sep); }
+.cal-actions button:hover { background: var(--fill-2); }
+
+/* Share table */
+.share { max-width: 1180px; margin: 28px auto 0; }
+.share-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 4px 12px; }
+.share-head h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+.share-head p { margin: 2px 0 0; font-size: 13px; color: var(--label-2); }
+.share-head > div:first-child { flex: 1; min-width: 0; }
+.date-fmt { flex: none; }
+.tablewrap { background: var(--surface); border-radius: 16px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.06); overflow: hidden; }
+#shareTable { padding: 20px 24px 18px; background: var(--surface); }
+.tbl-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 2px; }
+.tbl-sub { font-size: 12px; color: var(--label-2); margin: 0 0 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 11px; font-weight: 600; color: var(--label-2); text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--sep-strong); }
+td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--sep); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.dates { white-space: nowrap; font-weight: 500; }
+td.days { white-space: nowrap; color: var(--label-2); }
+td.status { white-space: nowrap; }
+td.status > span { display: flex; align-items: center; gap: 8px; }
+td.status .mk, td.status .mk-ic { display: block; }
+td.status .mk-ic svg { display: block; }
+.tbl-empty { padding: 20px 0 8px; color: var(--label-2); }
+
+/* ---------- Composer popover ---------- */
+.pop {
+  position: fixed; z-index: 40; width: 372px; padding: 14px;
+  background: rgba(255,255,255,0.9); border-radius: 14px;
+  backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: 0 0 0 0.5px rgba(0,0,0,0.14), 0 22px 60px -12px rgba(0,0,0,0.3);
+  display: flex; flex-direction: column; gap: 12px;
+  animation: pop-in 200ms var(--ease);
+}
+@keyframes pop-in { from { opacity: 0; transform: scale(0.96); } }
+.pop-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pop-when { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.pop-len { font-size: 12px; color: var(--label-2); white-space: nowrap; }
+.pop-dates { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; }
+.pop-dates span { color: var(--label-3); font-size: 12px; }
+.pop input[type="date"], .pop-input {
+  width: 100%; border: 0; outline: none; background: var(--fill); border-radius: 9px; height: 34px; padding: 0 10px; font-size: 13px;
+  transition: box-shadow 150ms var(--ease);
+}
+.pop input[type="date"] { color: var(--blue); font-weight: 500; }
+.pop input:focus-visible { box-shadow: 0 0 0 2px rgba(0,122,255,0.5); }
+.pop-input.err { box-shadow: 0 0 0 2px rgba(255,59,48,0.55); }
+.pop-input.err::placeholder { color: var(--red); }
+.pop .seg span { padding: 0 3px; gap: 4px; font-size: 12px; }
+.pop-actions { display: flex; align-items: center; gap: 8px; }
+.pop-actions .sp { flex: 1; }
+.pop.sheet { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; animation-name: sheet-in; }
+@keyframes sheet-in { from { opacity: 0; transform: translateY(24px); } }
+
+/* Toast */
+.toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 12px); opacity: 0;
+  background: rgba(29,29,31,0.92); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500;
+  pointer-events: none; transition: opacity 200ms var(--ease), transform 250ms var(--ease); z-index: 50;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast u { text-decoration: none; color: #64D2FF; margin-left: 10px; font-weight: 600; }
+
+@media (max-width: 1000px) {
+  .months.three { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .card-body { grid-template-columns: minmax(0, 1fr); }
+  .legend { border-left: 0; padding-left: 0; border-top: 1px solid var(--sep); padding-top: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--sep); }
+  .resizer { display: none; }
+  .main { padding: 20px 16px 48px; }
+  .bar, .share-head { flex-direction: column; align-items: stretch; }
+  .card { padding: 22px 14px 18px; border-radius: 18px; }
+  .card-head h2 { font-size: 24px; }
+  .months, .months.multi { --base: 66px; --top: 26px; --lane: 16px; --barh: 14px; --holh: 12px; --pad: 7px; --num: 12.5px; --fs: 10px; --hfs: 9.5px; --x: 6px; }
+  .tablewrap { overflow-x: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ============ Sidebar ============ -->
+  <aside class="side" aria-label="Settings and entries">
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true"><b id="brandMon">NOV</b><span id="brandDay">4</span></div>
+      <h1>Travel Calendar</h1>
+    </div>
+
+    <div class="section-title" style="margin-top:4px">Saved calendars <button type="button" id="newCal">New calendar</button></div>
+    <div class="group">
+      <ul class="list" id="calList"></ul>
+      <div class="cal-actions">
+        <button type="button" id="dupCal">Duplicate</button>
+        <button type="button" id="exportCal">Export file</button>
+        <button type="button" id="importCal">Open file</button>
+      </div>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <p class="hint">Calendars save automatically in this browser. Export a file to keep a copy anywhere or move it to another computer.</p>
+
+    <div style="height:18px"></div>
+    <button class="btn primary block" id="newBtn" type="button">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>New entry
+    </button>
+    <p class="hint">Or click a day on the calendar. Drag across days to select a range. Drag an existing item to move it.</p>
+
+    <div class="section-title">Calendar</div>
+    <div class="group">
+      <div class="row"><label for="title">Title</label><input id="title" class="field" placeholder="Travel Plan" autocomplete="off"></div>
+      <div class="row"><label for="name">Name</label><input id="name" class="field" placeholder="Your name" autocomplete="off"></div>
+      <div class="row"><span class="lbl">Show</span>
+        <div class="seg small" role="radiogroup" aria-label="Number of months">
+          <label><input type="radio" name="span" value="1"><span>1 month</span></label>
+          <label><input type="radio" name="span" value="2"><span>2</span></label>
+          <label><input type="radio" name="span" value="3"><span>3</span></label>
+        </div>
+      </div>
+      <div class="row"><span class="lbl">Starts</span>
+        <div class="stepper"><button type="button" data-step="start,-1" aria-label="Previous start month"><svg width="9" height="14" viewBox="0 0 9 14"><path d="M7.5 1.5 2 7l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span id="startLbl"></span><button type="button" data-step="start,1" aria-label="Next start month"><svg width="9" height="14" viewBox="0 0 9 14"><path d="M1.5 1.5 7 7l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+      </div>
+      <div class="row"><span class="lbl">Ends</span>
+        <div class="stepper"><button type="button" data-step="end,-1" aria-label="Previous end month"><svg width="9" height="14" viewBox="0 0 9 14"><path d="M7.5 1.5 2 7l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span id="endLbl"></span><button type="button" data-step="end,1" aria-label="Next end month"><svg width="9" height="14" viewBox="0 0 9 14"><path d="M1.5 1.5 7 7l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+      </div>
+      <div class="row"><span class="lbl">Legend</span>
+        <div class="seg small" role="radiogroup" aria-label="Legend position">
+          <label title="Right side, or below when it would leave empty space"><input type="radio" name="lgpos" value="auto"><span>Auto</span></label>
+          <label><input type="radio" name="lgpos" value="right"><span>Right</span></label>
+          <label><input type="radio" name="lgpos" value="below"><span>Below</span></label>
+        </div>
+      </div>
+      <div class="row"><span class="lbl">Week starts</span>
+        <div class="seg small" role="radiogroup" aria-label="Week starts on">
+          <label><input type="radio" name="ws" value="0"><span>Sun</span></label>
+          <label><input type="radio" name="ws" value="1"><span>Mon</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Holidays</div>
+    <div class="group">
+      <div class="row"><label class="lbl-sw" for="showCN"><span class="tag" style="--c:#FF3B30">CN</span>China public holidays</label><span class="switch"><input type="checkbox" id="showCN"><span></span></span></div>
+      <div class="row"><span class="lbl">China names</span>
+        <div class="seg small" role="radiogroup" aria-label="China holiday name language">
+          <label><input type="radio" name="lang" value="en"><span>English</span></label>
+          <label><input type="radio" name="lang" value="zh"><span>中文</span></label>
+        </div>
+      </div>
+      <div class="row"><label class="lbl-sw" for="showUS"><span class="tag" style="--c:#5856D6">US</span>US federal holidays</label><span class="switch"><input type="checkbox" id="showUS"><span></span></span></div>
+    </div>
+    <p class="hint">China: official 2025 and 2026 schedules, including make-up workdays. 2027 shows statutory days only until the State Council publishes it.</p>
+
+    <div class="section-title">Your entries <button type="button" id="clearAll">Clear all</button></div>
+    <div class="group"><ul class="list" id="list"></ul></div>
+  </aside>
+  <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0" title="Drag to resize · double-click to reset"></div>
+
+  <!-- ============ Preview ============ -->
+  <main class="main">
+    <div class="bar">
+      <p>Preview of the exported card. Click or drag on days to add; drag items to move.</p>
+      <div class="btn-row">
+        <button class="btn" id="copyImg" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>Copy image</button>
+        <button class="btn primary" id="dlImg" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8.5M4.5 7 8 10.5 11.5 7M2.5 13.5h11"/></svg>Download PNG</button>
+      </div>
+    </div>
+
+    <section class="card" id="card" aria-label="Calendar card">
+      <div class="card-head"><h2 id="cTitle"></h2><div class="sub" id="cSub"></div></div>
+      <div class="card-body">
+        <div class="months" id="months"></div>
+        <aside class="legend" id="legend"></aside>
+      </div>
+      <div class="card-foot"><span id="cFootL"></span><span id="cFootR"></span></div>
+    </section>
+
+    <section class="share">
+      <div class="share-head">
+        <div><h2>Share as a table</h2><p>Paste into a DM. Text works in Slack, Teams, WeChat and email.</p></div>
+        <div class="seg small date-fmt" role="radiogroup" aria-label="Date format" id="dateFmt"></div>
+        <div class="btn-row">
+          <button class="btn" id="copyMd" type="button">Copy Markdown</button>
+          <button class="btn" id="copyTblImg" type="button">Copy image</button>
+          <button class="btn" id="copyTbl" type="button" title="Pastes as a real table in email, Docs, Notion, Teams, Lark, Excel and Sheets">Copy table</button>
+          <button class="btn primary" id="copyTxt" type="button" title="Plain list: best for Slack and WeChat">Copy text</button>
+        </div>
+      </div>
+      <div class="tablewrap"><div id="shareTable"></div></div>
+    </section>
+  </main>
+</div>
+
+<!-- Composer: one input for every kind of entry -->
+<form class="pop" id="pop" hidden autocomplete="off" aria-label="Add to calendar">
+  <div class="pop-head"><div class="pop-when" id="popWhen"></div><div class="pop-len" id="popLen"></div></div>
+  <div class="pop-dates">
+    <input type="date" id="pFrom" aria-label="From" required><span>to</span><input type="date" id="pTo" aria-label="To">
+  </div>
+  <div class="seg" id="pCats" role="radiogroup" aria-label="Category"></div>
+  <input class="pop-input" id="pText" placeholder="">
+  <div class="swatches" id="pColors" role="radiogroup" aria-label="Color"></div>
+  <div class="pop-actions">
+    <button type="button" class="btn danger" id="pDel" hidden>Delete</button>
+    <span class="sp"></span>
+    <button type="button" class="btn" id="pCancel">Cancel</button>
+    <button type="submit" class="btn primary" id="pSave">Add</button>
+  </div>
+</form>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================
+   Data
+   ========================================================= */
+const CATS = [
+  { id: 'travel',  label: 'Traveling for work', short: 'Travel',  color: '#007AFF', hint: 'Where? e.g. Shanghai' },
+  { id: 'wfh',     label: 'Working from home',  short: 'WFH',     color: '#34C759', hint: 'Where? e.g. Shanghai (optional)' },
+  { id: 'ooo',     label: 'Out of office',      short: 'OOO',     color: '#AF52DE', hint: 'Note (optional), e.g. Vacation' },
+  { id: 'holiday', label: 'Public holiday',     short: 'Holiday', color: '#FF9500', hint: 'Note (optional), e.g. Golden Week' },
+  { id: 'flight',  label: 'Flight',             short: 'Flight',  color: '#007AFF', hint: 'Route, e.g. LAX → PVG · UA857' },
+  { id: 'key',     label: 'Key date',           short: 'Key',     color: null,      hint: 'Title, e.g. EVT build' },
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
+const STACKED = t => t === 'key' || t === 'flight'; // drawn as chips/bars that stack, not as day bands
+const STATUS = CATS.filter(c => !STACKED(c.id));
+const KEY_COLORS = ['#FF2D55', '#FF3B30', '#FF9500', '#FFCC00', '#30B0C7', '#5856D6', '#A2845E', '#8E8E93'];
+const SRC = {
+  cn: { label: 'China public holiday', color: '#FF3B30', tag: 'CN' },
+  us: { label: 'US federal holiday',   color: '#5856D6', tag: 'US' },
+};
+
+/* China: State Council notices (国务院办公厅). 2025 & 2026 official; 2027 statutory days only (estimated). */
+const CN = {
+  2025: {
+    off: [
+      ['2025-01-01', '2025-01-01', 'New Year’s Day', '元旦'],
+      ['2025-01-28', '2025-02-04', 'Spring Festival', '春节'],
+      ['2025-04-04', '2025-04-06', 'Qingming Festival', '清明节'],
+      ['2025-05-01', '2025-05-05', 'Labour Day', '劳动节'],
+      ['2025-05-31', '2025-06-02', 'Dragon Boat Festival', '端午节'],
+      ['2025-10-01', '2025-10-08', 'National Day & Mid-Autumn', '国庆节·中秋节'],
+    ],
+    work: ['2025-01-26', '2025-02-08', '2025-04-27', '2025-09-28', '2025-10-11'],
+  },
+  2026: {
+    off: [
+      ['2026-01-01', '2026-01-03', 'New Year’s Day', '元旦'],
+      ['2026-02-15', '2026-02-23', 'Spring Festival', '春节'],
+      ['2026-04-04', '2026-04-06', 'Qingming Festival', '清明节'],
+      ['2026-05-01', '2026-05-05', 'Labour Day', '劳动节'],
+      ['2026-06-19', '2026-06-21', 'Dragon Boat Festival', '端午节'],
+      ['2026-09-25', '2026-09-27', 'Mid-Autumn Festival', '中秋节'],
+      ['2026-10-01', '2026-10-07', 'National Day', '国庆节'],
+    ],
+    work: ['2026-01-04', '2026-02-14', '2026-02-28', '2026-05-09', '2026-09-20', '2026-10-10'],
+  },
+  2027: {
+    est: true,
+    off: [
+      ['2027-01-01', '2027-01-01', 'New Year’s Day', '元旦'],
+      ['2027-02-05', '2027-02-08', 'Spring Festival', '春节'],
+      ['2027-04-05', '2027-04-05', 'Qingming Festival', '清明节'],
+      ['2027-05-01', '2027-05-02', 'Labour Day', '劳动节'],
+      ['2027-06-09', '2027-06-09', 'Dragon Boat Festival', '端午节'],
+      ['2027-09-15', '2027-09-15', 'Mid-Autumn Festival', '中秋节'],
+      ['2027-10-01', '2027-10-03', 'National Day', '国庆节'],
+    ],
+    work: [],
+  },
+};
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MON = MONTHS.map(m => m.slice(0, 3));
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const isWeekend = d => d.getDay() === 0 || d.getDay() === 6;
+const dayCount = (s, e) => Math.round((parse(e) - parse(s)) / 864e5) + 1;
+
+function fmtDay(d, { wd = true, year = false } = {}) {
+  return `${wd ? WD[d.getDay()] + ', ' : ''}${MON[d.getMonth()]} ${d.getDate()}${year ? ', ' + d.getFullYear() : ''}`;
+}
+/* Table / text / Markdown dates follow the calendar's chosen format */
+const DATE_FMTS = { text: 'Mon, Nov 16', md: 'MM/DD', mdy: 'MM/DD/YYYY' };
+function fmtTable(s, e) {
+  const f = state.dateFmt || 'text';
+  if (f === 'text') return fmtRange(s, e);
+  const one = x => { const d = parse(x); return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}${f === 'mdy' ? '/' + d.getFullYear() : ''}`; };
+  return s === e ? one(s) : `${one(s)} – ${one(e)}`;
+}
+function fmtRange(s, e, { wd = true, compact = false } = {}) {
+  const a = parse(s), b = parse(e), yr = a.getFullYear() !== b.getFullYear();
+  if (s === e) return fmtDay(a, { wd });
+  if (compact && !wd && a.getMonth() === b.getMonth() && !yr) return `${MON[a.getMonth()]} ${a.getDate()} – ${b.getDate()}`;
+  return `${fmtDay(a, { wd, year: yr })} – ${fmtDay(b, { wd, year: yr })}`;
+}
+const colorOf = e => e.type === 'key' ? (e.color || KEY_COLORS[0]) : CAT[e.type].color;
+const labelOf = e => e.type === 'key' ? (e.start === e.end ? 'Key date' : 'Key period') : CAT[e.type].label;
+const titleOf = e => STACKED(e.type) ? e.note : (e.note ? `${CAT[e.type].label} · ${e.note}` : CAT[e.type].label);
+
+/* US federal holidays (5 U.S.C. 6103), shown on the observed day */
+function nthWeekday(y, m, wd, n) { const f = new Date(y, m, 1); return new Date(y, m, 1 + (wd - f.getDay() + 7) % 7 + (n - 1) * 7); }
+function lastWeekday(y, m, wd) { const l = new Date(y, m + 1, 0); return new Date(y, m, l.getDate() - (l.getDay() - wd + 7) % 7); }
+function usHolidays(y) {
+  const fixed = (m, d, name) => {
+    const a = new Date(y, m, d), w = a.getDay();
+    const o = w === 6 ? addDays(a, -1) : w === 0 ? addDays(a, 1) : a;
+    return { date: o, name: name + (o.getTime() !== a.getTime() ? ' (observed)' : '') };
+  };
+  return [
+    fixed(0, 1, 'New Year’s Day'),
+    { date: nthWeekday(y, 0, 1, 3), name: 'Martin Luther King Jr. Day' },
+    { date: nthWeekday(y, 1, 1, 3), name: 'Presidents’ Day' },
+    { date: lastWeekday(y, 4, 1),   name: 'Memorial Day' },
+    fixed(5, 19, 'Juneteenth'),
+    fixed(6, 4, 'Independence Day'),
+    { date: nthWeekday(y, 8, 1, 1), name: 'Labor Day' },
+    { date: nthWeekday(y, 9, 1, 2), name: 'Columbus Day' },
+    fixed(10, 11, 'Veterans Day'),
+    { date: nthWeekday(y, 10, 4, 4), name: 'Thanksgiving Day' },
+    fixed(11, 25, 'Christmas Day'),
+  ];
+}
+
+/* =========================================================
+   State
+   ========================================================= */
+const KEY = 'travel-calendar-v1';
+const TODAY = new Date();
+function sampleState() {
+  return {
+    title: 'Travel Plan', name: '', start: '2026-11', end: '2026-12', weekStart: 0,
+    showCN: true, showUS: true, cnLang: 'en', lastCat: 'travel', lastColor: KEY_COLORS[0],
+    entries: [
+      { id: uid(), type: 'flight',  start: '2026-11-15', end: '2026-11-15', note: 'LAX → PVG · UA857' },
+      { id: uid(), type: 'travel',  start: '2026-11-16', end: '2026-11-20', note: 'Shanghai' },
+      { id: uid(), type: 'flight',  start: '2026-11-21', end: '2026-11-21', note: 'PVG → LAX · UA858' },
+      { id: uid(), type: 'key',     start: '2026-11-17', end: '2026-11-19', note: 'Tooling T1 trial', color: '#FF9500' },
+      { id: uid(), type: 'key',     start: '2026-11-18', end: '2026-11-18', note: 'Supplier review', color: '#FF2D55' },
+      { id: uid(), type: 'wfh',     start: '2026-11-23', end: '2026-11-25', note: 'Irvine' },
+      { id: uid(), type: 'holiday', start: '2026-11-26', end: '2026-11-27', note: 'Thanksgiving' },
+      { id: uid(), type: 'travel',  start: '2026-11-30', end: '2026-12-04', note: 'Shenzhen' },
+      { id: uid(), type: 'key',     start: '2026-12-02', end: '2026-12-02', note: 'Factory audit', color: '#30B0C7' },
+      { id: uid(), type: 'key',     start: '2026-12-07', end: '2026-12-11', note: 'EVT build', color: '#5856D6' },
+      { id: uid(), type: 'key',     start: '2026-12-10', end: '2026-12-10', note: 'Quarterly review', color: '#FF3B30' },
+      { id: uid(), type: 'ooo',     start: '2026-12-21', end: '2026-12-31', note: 'Year-end vacation' },
+    ],
+  };
+}
+/* Saved calendars: a small library kept in this browser. Each calendar autosaves. */
+const LIB_KEY = 'travel-calendar-lib-v1';
+function blankState() {
+  const y = TODAY.getFullYear(), m = TODAY.getMonth() + 1;
+  return {
+    title: 'Untitled plan', name: state ? state.name : '', start: `${y}-${pad(m)}`, end: m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`,
+    weekStart: state ? state.weekStart : 0, showCN: true, showUS: true, cnLang: state ? state.cnLang : 'en',
+    lastCat: 'travel', lastColor: KEY_COLORS[0], entries: [],
+  };
+}
+function normalize(c) {
+  c = Object.assign(sampleState(), c);
+  if (!Array.isArray(c.entries)) c.entries = [];
+  if (Array.isArray(c.events)) { // migrate v1 key dates
+    c.events.forEach(ev => c.entries.push({ id: ev.id || uid(), type: 'key', start: ev.date, end: ev.date, note: ev.title, color: ev.color }));
+    delete c.events;
+  }
+  c.entries.forEach(e => { if (!e.id) e.id = uid(); });
+  return c;
+}
+let state = null, lib = null;
+try { lib = JSON.parse(localStorage.getItem(LIB_KEY)); } catch {}
+if (!lib || !lib.cals || !Object.keys(lib.cals).length) {
+  let old = null; try { old = JSON.parse(localStorage.getItem(KEY)); } catch {}
+  const id = uid(); lib = { current: id, cals: { [id]: old || sampleState() } };
+}
+Object.keys(lib.cals).forEach(id => { lib.cals[id] = normalize(lib.cals[id]); });
+if (!lib.cals[lib.current]) lib.current = Object.keys(lib.cals)[0];
+state = lib.cals[lib.current];
+const save = () => { state.updated = Date.now(); try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch {} };
+
+/* =========================================================
+   Derived data
+   ========================================================= */
+function monthList() {
+  let [sy, sm] = state.start.split('-').map(Number), [ey, em] = state.end.split('-').map(Number);
+  if (ey * 12 + em < sy * 12 + sm) [sy, sm, ey, em] = [ey, em, sy, sm];
+  const out = []; let y = sy, m = sm;
+  while (y * 12 + m <= ey * 12 + em && out.length < 12) { out.push([y, m - 1]); if (++m > 12) { m = 1; y++; } }
+  return out;
+}
+function visibleRange() {
+  const ms = monthList(); const [fy, fm] = ms[0], [ly, lm] = ms[ms.length - 1];
+  return [new Date(fy, fm, 1), new Date(ly, lm + 1, 0)];
+}
+function buildHolidays(a, b) {
+  const map = new Map();
+  const put = (d, h) => { if (d < a || d > b) return; const k = iso(d); if (!map.has(k)) map.set(k, []); map.get(k).push(h); };
+  for (let y = a.getFullYear() - 1; y <= b.getFullYear() + 1; y++) {
+    if (state.showCN && CN[y]) {
+      const Y = CN[y];
+      Y.off.forEach(([s, e, en, zh]) => { for (let d = parse(s); d <= parse(e); d = addDays(d, 1)) put(d, { src: 'cn', gid: 'cn' + s, name: en, zh, est: !!Y.est, start: s, end: e }); });
+      Y.work.forEach(w => put(parse(w), { src: 'cn', gid: 'cnw' + w, work: true, name: 'Work', zh: '补班', start: w, end: w }));
+    }
+    if (state.showUS) usHolidays(y).forEach(h => put(h.date, { src: 'us', gid: 'us' + iso(h.date), name: h.name, start: iso(h.date), end: iso(h.date) }));
+  }
+  return map;
+}
+const hName = h => (h.src === 'cn' && state.cnLang === 'zh') ? h.zh : h.name;
+function statusMap() {
+  const map = new Map();
+  state.entries.filter(e => !STACKED(e.type)).forEach(e => { for (let d = parse(e.start); d <= parse(e.end); d = addDays(d, 1)) map.set(iso(d), e); });
+  return map;
+}
+function countWork(s, e, hmap) {
+  let work = 0;
+  for (let d = parse(s); d <= parse(e); d = addDays(d, 1)) if (!isWeekend(d) && !(hmap.get(iso(d)) || []).some(h => !h.work)) work++;
+  return work;
+}
+const overlaps = (s, e, a, b) => parse(s) <= b && parse(e) >= a;
+
+/* Lay out key items inside one week row: overlapping items stack into lanes */
+function layoutRow(rowIso, keys) {
+  const items = keys.map(k => {
+    let c0 = -1, c1 = -1;
+    rowIso.forEach((s, c) => { if (s && s >= k.start && s <= k.end) { if (c0 < 0) c0 = c; c1 = c; } });
+    return c0 < 0 ? null : { k, c0, c1 };
+  }).filter(Boolean).sort((x, y) => x.k.start.localeCompare(y.k.start) || (dayCount(y.k.start, y.k.end) - dayCount(x.k.start, x.k.end)));
+  const occ = [];
+  items.forEach(it => {
+    let l = 0;
+    while (occ[l] && occ[l].slice(it.c0, it.c1 + 1).some(Boolean)) l++;
+    occ[l] = occ[l] || Array(7).fill(false);
+    for (let c = it.c0; c <= it.c1; c++) occ[l][c] = true;
+    it.lane = l;
+  });
+  return { items, occ, lanes: occ.length };
+}
+
+/* =========================================================
+   Calendar card
+   ========================================================= */
+/* "LAX → PVG · UA857" -> ["LAX → PVG", "UA857"]: route on the calendar, details in legend/table */
+const flightParts = n => { const i = String(n).indexOf(' · '); return i < 0 ? [n, ''] : [n.slice(0, i), n.slice(i + 3)]; };
+const PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+const PLANE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
+
+function renderMonth(y, m, smap, hmap, keys) {
+  const first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate();
+  const lead = (first.getDay() - state.weekStart + 7) % 7;
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push(null);
+  for (let d = 1; d <= days; d++) cells.push(new Date(y, m, d));
+  while (cells.length % 7) cells.push(null);
+
+  const dow = Array.from({ length: 7 }, (_, i) => (i + state.weekStart) % 7)
+    .map(w => `<span class="${w === 0 || w === 6 ? 'we' : ''}">${WD[w]}</span>`).join('');
+  const hAt = (j, gid) => cells[j] ? (hmap.get(iso(cells[j])) || []).some(x => x.gid === gid) : false;
+  const sAt = j => cells[j] ? smap.get(iso(cells[j])) : undefined;
+
+  let weeks = '';
+  for (let r = 0; r < cells.length / 7; r++) {
+    const row = cells.slice(r * 7, r * 7 + 7);
+    const rowIso = row.map(d => d ? iso(d) : null);
+    const lay = layoutRow(rowIso, keys);
+    let hol = 0;
+    rowIso.forEach(k => { if (!k) return; const hs = hmap.get(k) || []; hol = Math.max(hol, hs.some(h => h.src === 'cn') + hs.some(h => h.src === 'us')); });
+
+    let html = '', nl = 0;
+    const ink = []; // per lane: rightmost column already drawn over, so labels never overlap
+    row.forEach((d, col) => {
+      const i = r * 7 + col;
+      if (!d) { html += '<div class="cell empty" aria-hidden="true"></div>'; return; }
+      const k = rowIso[col];
+      const e = smap.get(k);
+      const hs = hmap.get(k) || [];
+      const offH = hs.find(h => !h.work);
+      const cls = ['cell'];
+      let style = '', band = '', note = '', hl = '', kl = '';
+      if (isWeekend(d)) cls.push('we');
+      if (offH) { cls.push('hol'); style += `--hc:${SRC[offH.src].color};`; }
+
+      if (e) {
+        cls.push('has'); style += `--c:${CAT[e.type].color};`;
+        const s = col === 0 || sAt(i - 1) !== e, en = col === 6 || sAt(i + 1) !== e;
+        band = `<span class="band${s ? ' s' : ''}${en ? ' e' : ''}"></span>`;
+        if (s) {
+          let span = 1; while (col + span < 7 && sAt(i + span) === e) span++;
+          while (span < 3 && col + span < 7 && !sAt(i + span)) span++;
+          nl = 1;
+          note = `<span class="note" data-id="${e.id}" style="--span:${span}">${e.type === 'travel' || (e.type === 'wfh' && e.note) ? PIN : ''}<b>${esc(e.note || CAT[e.type].short)}</b></span>`;
+        }
+      }
+
+      lay.items.filter(it => it.c0 === col).forEach(it => {
+        const c = colorOf(it.k);
+        if (it.k.start === it.k.end) {
+          const L = it.lane, floor = ink[L] ?? -1;
+          let span = 1; while (span < 3 && col + span < 7 && !lay.occ[L][col + span]) span++;
+          // no room to the right (e.g. Saturday): grow leftward into free days instead
+          let back = 0;
+          if (span < 2) while (back < 2 && col - back - 1 > floor && !lay.occ[L][col - back - 1]) back++;
+          const rtl = back > 0, w = rtl ? back + 1 : span;
+          ink[L] = col + (rtl ? 0 : span - 1);
+          const txt = it.k.type === 'flight' ? flightParts(it.k.note)[0] : it.k.note;
+          kl += it.k.type === 'flight'
+            ? `<span class="kline flight${rtl ? ' rtl' : ''}" data-id="${it.k.id}" style="--l:${L};--span:${w};--c:${c}">${PLANE}<b>${esc(txt)}</b></span>`
+            : `<span class="kline${rtl ? ' rtl' : ''}" data-id="${it.k.id}" style="--l:${L};--span:${w};--c:${c}">${esc(txt)}</span>`;
+        } else {
+          const s = it.k.start === rowIso[it.c0], en = it.k.end === rowIso[it.c1];
+          const fl = it.k.type === 'flight';
+          ink[it.lane] = it.c1;
+          kl += `<span class="kbar${s ? ' s' : ''}${en ? ' e' : ''}${fl ? ' flight' : ''}" data-id="${it.k.id}" style="--l:${it.lane};--span:${it.c1 - it.c0 + 1};--c:${c}">${fl ? PLANE + '<b>' + esc(flightParts(it.k.note)[0]) + '</b>' : esc(it.k.note)}</span>`;
+        }
+      });
+
+      const hasCN = hs.some(h => h.src === 'cn');
+      hs.forEach(h => {
+        if (col > 0 && hAt(i - 1, h.gid)) return;
+        let span = 1; while (col + span < 7 && hAt(i + span, h.gid)) span++;
+        const free = j => !cells[j] || !(hmap.get(iso(cells[j])) || []).length;
+        while (span < 3 && col + span < 7 && free(i + span)) span++;
+        const slot = h.src === 'us' && hasCN ? 1 : 0;
+        hl += `<span class="hname${h.work ? ' work' : ''}" style="--span:${span};--c:${SRC[h.src].color};--i:${slot}">${esc(hName(h))}</span>`;
+      });
+
+      const singles = keys.filter(x => x.type === 'key' && x.start === k && x.end === k);
+      const dots = singles.length ? `<span class="dots">${singles.slice(0, 3).map(x => `<i style="--c:${colorOf(x)}"></i>`).join('')}</span>` : '';
+      const tip = [fmtDay(d), e && titleOf(e), ...keys.filter(x => k >= x.start && k <= x.end).map(x => x.note),
+        ...hs.map(h => `${hName(h)} (${SRC[h.src].tag})`)].filter(Boolean).join('\n');
+      html += `<div class="${cls.join(' ')}" style="${style}" data-date="${k}" tabindex="0" role="button" title="${esc(tip)}">${band}<span class="num">${d.getDate()}</span>${dots}${note}${kl}${hl}</div>`;
+    });
+    weeks += `<div class="week" style="--lanes:${lay.lanes};--hol:${hol};--nl:${nl}">${html}</div>`;
+  }
+  return `<div class="month"><div class="mhead">${MONTHS[m]} <span class="y">${y}</span></div><div class="dow">${dow}</div><div class="grid">${weeks}</div></div>`;
+}
+
+function renderLegend(a, b, smap, hmap) {
+  const counts = {};
+  for (let d = new Date(a); d <= b; d = addDays(d, 1)) { const e = smap.get(iso(d)); if (e) counts[e.type] = (counts[e.type] || 0) + 1; }
+  const anyUsed = Object.keys(counts).length > 0;
+  let out = '<div class="lg"><h3>Status</h3><ul>';
+  STATUS.forEach(c => {
+    const n = counts[c.id] || 0;
+    out += `<li class="${anyUsed && !n ? 'off' : ''}"><span class="sw-band" style="--c:${c.color}"></span><span class="t">${c.label}</span><span class="k">${n ? n + (n === 1 ? ' day' : ' days') : ''}</span></li>`;
+  });
+  out += '</ul></div>';
+
+  const inRange = state.entries.filter(e => overlaps(e.start, e.end, a, b)).sort((x, y) => x.start.localeCompare(y.start));
+  const trips = inRange.filter(e => e.type === 'travel' || (e.type === 'wfh' && e.note));
+  if (trips.length) {
+    out += '<div class="lg"><h3>Where I’ll be</h3><ul>';
+    trips.forEach(t => out += `<li><span class="sw-band" style="--c:${CAT[t.type].color}"></span><span class="t">${esc(t.note || 'Travel')}${t.type === 'wfh' ? '<small>WFH</small>' : ''}</span><span class="k">${fmtRange(t.start, t.end, { wd: false, compact: true })}</span></li>`);
+    out += '</ul></div>';
+  }
+
+  const flights = inRange.filter(e => e.type === 'flight');
+  if (flights.length) {
+    out += '<div class="lg"><h3>Flights</h3><ul>';
+    flights.forEach(f => { const [route, extra] = flightParts(f.note); out += `<li><span class="sw-ic" style="--c:${CAT.flight.color}">${PLANE}</span><span class="t">${esc(route)}${extra ? `<small>${esc(extra)}</small>` : ''}</span><span class="k">${f.start === f.end ? fmtDay(parse(f.start), { wd: false }) : fmtRange(f.start, f.end, { wd: false, compact: true })}</span></li>`; });
+    out += '</ul></div>';
+  }
+
+  const keys = inRange.filter(e => e.type === 'key');
+  if (keys.length) {
+    out += '<div class="lg"><h3>Key dates</h3><ul>';
+    keys.forEach(x => out += `<li><span class="${x.start === x.end ? 'sw-dot' : 'sw-bar'}" style="--c:${colorOf(x)}"></span><span class="t">${esc(x.note)}</span><span class="k">${x.start === x.end ? fmtDay(parse(x.start), { wd: false }) : fmtRange(x.start, x.end, { wd: false, compact: true })}</span></li>`);
+    out += '</ul></div>';
+  }
+
+  // Holidays: one row per holiday, each tagged CN / US in its color. Nothing to decode.
+  const groups = new Map(); const works = [];
+  hmap.forEach(list => list.forEach(h => {
+    if (h.work) { if (!works.includes(h.start)) works.push(h.start); }
+    else if (!groups.has(h.gid)) groups.set(h.gid, h);
+  }));
+  const gl = [...groups.values()].sort((x, y) => x.start.localeCompare(y.start) || x.src.localeCompare(y.src));
+  if (gl.length || works.length) {
+    out += '<div class="lg"><h3>Holidays</h3><ul>';
+    gl.forEach(h => out += `<li class="hol"><span class="tag" style="--c:${SRC[h.src].color}">${SRC[h.src].tag}</span><span class="t"><b>${esc(hName(h))}</b>${h.est ? ' (est.)' : ''}</span><span class="k">${fmtRange(h.start, h.end, { wd: false, compact: true })}</span></li>`);
+    if (works.length) out += `<li class="hol"><span class="tag" style="--c:#8E8E93">${state.cnLang === 'zh' ? '补班' : 'Work'}</span><span class="t"><b>China make-up workday${works.length > 1 ? 's' : ''}</b><small>${works.sort().map(w => fmtDay(parse(w))).join(', ')}</small></span><span></span></li>`;
+    out += '</ul>';
+    if (gl.some(h => h.est)) out += '<p class="fine">Est. = statutory dates; official schedule pending.</p>';
+    out += '</div>';
+  }
+  return out;
+}
+
+function periodLabel() {
+  const ms = monthList(); const [fy, fm] = ms[0], [ly, lm] = ms[ms.length - 1];
+  if (ms.length === 1) return `${MONTHS[fm]} ${fy}`;
+  if (fy === ly) return `${MONTHS[fm]} – ${MONTHS[lm]} ${fy}`;
+  return `${MONTHS[fm]} ${fy} – ${MONTHS[lm]} ${ly}`;
+}
+
+function renderCard() {
+  const ms = monthList(); const [a, b] = visibleRange();
+  const smap = statusMap(), hmap = buildHolidays(a, b);
+  const keys = state.entries.filter(e => STACKED(e.type) && e.note);
+  const wrap = $('months');
+  wrap.className = 'months' + (ms.length > 1 ? ' multi' : '') + (ms.length === 3 ? ' three' : '');
+  $('card').classList.toggle('three', ms.length === 3);
+  wrap.innerHTML = ms.map(([y, m]) => renderMonth(y, m, smap, hmap, keys)).join('');
+  $('legend').innerHTML = renderLegend(a, b, smap, hmap);
+  $('cTitle').textContent = state.title || 'Travel Plan';
+  $('cSub').textContent = [state.name, periodLabel()].filter(Boolean).join(' · ');
+  $('cFootL').textContent = `Updated ${fmtDay(TODAY, { wd: false, year: true })}`;
+  const tags = [state.showCN && 'China', state.showUS && 'US'].filter(Boolean);
+  $('cFootR').textContent = tags.length ? `Public holidays: ${tags.join(' and ')}` : '';
+  applyPick(currentPick());
+  arrange();
+}
+
+/* When the legend is taller than the calendar, grow the calendar rows to match so the card has no empty patch */
+/* Measure wrapped labels, stack them per week, then give every week the tallest week's height */
+function layoutCells() {
+  const m = $('months'); if (!m) return;
+  const cs = getComputedStyle(m), px = v => parseFloat(cs.getPropertyValue(v)) || 0;
+  const top0 = px('--top'), holh = px('--holh'), pad = px('--pad'), base = px('--base'), gap = 2;
+  let need = base;
+  m.querySelectorAll('.week').forEach(w => {
+    let y = top0;
+    const notes = [...w.querySelectorAll('.note')];
+    if (notes.length) {
+      notes.forEach(n => { n.style.top = y + 'px'; });
+      y += Math.max(...notes.map(n => n.offsetHeight)) + gap;
+    }
+    const lanes = new Map();
+    w.querySelectorAll('.kbar, .kline').forEach(c => {
+      const l = Number(c.style.getPropertyValue('--l')) || 0;
+      if (!lanes.has(l)) lanes.set(l, []); lanes.get(l).push(c);
+    });
+    [...lanes.keys()].sort((a, b) => a - b).forEach(l => {
+      const list = lanes.get(l);
+      list.forEach(c => { c.style.top = y + 'px'; });
+      y += Math.max(...list.map(c => c.offsetHeight)) + gap;
+    });
+    const hol = Number(w.style.getPropertyValue('--hol')) || 0;
+    need = Math.max(need, y + hol * holh + pad);
+  });
+  m.style.setProperty('--cellh', Math.ceil(need) + 'px');
+}
+
+/* Legend on the right unless it would run much taller than the calendar (Auto), then put it below */
+function arrange() {
+  const card = $('card'), m = $('months'), lg = $('legend');
+  const n = monthList().length, pref = state.legendPos || 'auto';
+  card.classList.toggle('below', n !== 3 && pref === 'below');
+  if (pref === 'auto' && n !== 3) {
+    // decide at the export width so the preview makes the same choice as the image
+    const prev = card.style.width; card.style.width = exportWidth(card) + 'px';
+    layoutCells();
+    const tooTall = lg.offsetTop <= m.offsetTop + 10 && lg.offsetHeight > m.offsetHeight * 1.12 + 40;
+    card.style.width = prev;
+    if (tooTall) card.classList.add('below');
+  }
+  layoutCells();
+  fitRows();
+}
+
+function fitRows() {
+  const m = $('months'), lg = $('legend');
+  m.style.setProperty('--boost', '0px');
+  if (lg.offsetTop > m.offsetTop + 10) return; // legend sits below (narrow layout)
+  const cols = Math.max(1, getComputedStyle(m).gridTemplateColumns.split(' ').length);
+  const months = [...m.querySelectorAll('.month')];
+  let rows = 0;
+  for (let i = 0; i < months.length; i += cols) rows += Math.max(...months.slice(i, i + cols).map(x => x.querySelectorAll('.week').length));
+  let boost = 0;
+  for (let i = 0; i < 4; i++) {
+    const gap = lg.offsetHeight - m.offsetHeight;
+    if (Math.abs(gap) < 4) break;
+    boost = Math.max(0, Math.min(48, boost + gap / Math.max(1, rows)));
+    m.style.setProperty('--boost', boost + 'px');
+  }
+}
+
+/* =========================================================
+   Share table
+   ========================================================= */
+function tableRows() {
+  const [a, b] = visibleRange(); const hmap = buildHolidays(a, b);
+  return state.entries.filter(e => overlaps(e.start, e.end, a, b))
+    .sort((x, y) => x.start.localeCompare(y.start) || (x.type === 'key') - (y.type === 'key'))
+    .map(e => {
+      const total = dayCount(e.start, e.end);
+      const work = (e.type === 'travel' || e.type === 'wfh') ? countWork(e.start, e.end, hmap) : total;
+      return { e, color: colorOf(e), dates: fmtTable(e.start, e.end), status: labelOf(e),
+        days: total === 1 ? '1 day' : `${total} days`, work: work !== total ? `${work} workday${work === 1 ? '' : 's'}` : '', det: e.note || '' };
+    });
+}
+function holidayRows() {
+  const [a, b] = visibleRange(); const hmap = buildHolidays(a, b); const g = new Map();
+  hmap.forEach(list => list.forEach(h => { if (!h.work && !g.has(h.gid)) g.set(h.gid, h); }));
+  return [...g.values()].sort((x, y) => x.start.localeCompare(y.start))
+    .map(h => ({ dates: fmtTable(h.start, h.end), name: hName(h) + (h.est ? ' (est.)' : ''), src: SRC[h.src].tag }));
+}
+function markerHtml(e) {
+  if (e.type === 'flight') return `<span class="mk-ic" style="--c:${colorOf(e)}">${PLANE}</span>`;
+  if (e.type !== 'key') return `<span class="mk" style="--c:${colorOf(e)}"></span>`;
+  return `<span class="mk ${e.start === e.end ? 'dot' : 'period'}" style="--c:${colorOf(e)}"></span>`;
+}
+function renderTable() {
+  const rows = tableRows();
+  let h = `<p class="tbl-title">${esc(state.title || 'Travel Plan')}</p><p class="tbl-sub">${esc([state.name, periodLabel()].filter(Boolean).join(' · '))}</p>`;
+  if (!rows.length) h += '<p class="tbl-empty">Nothing scheduled in this period yet. Click a day on the calendar to add something.</p>';
+  else {
+    h += '<table><thead><tr><th>Dates</th><th>Length</th><th>Type</th><th>Details</th></tr></thead><tbody>';
+    rows.forEach(r => h += `<tr><td class="dates">${r.dates}</td><td class="days">${[r.days, r.work].filter(Boolean).join(' · ')}</td><td class="status"><span>${markerHtml(r.e)}${r.status}</span></td><td>${esc(r.det)}</td></tr>`);
+    h += '</tbody></table>';
+  }
+  $('shareTable').innerHTML = h;
+}
+function plainText() {
+  const rows = tableRows();
+  const lines = [`${state.title || 'Travel Plan'}${state.name ? ' · ' + state.name : ''} (${periodLabel()})`, ''];
+  if (!rows.length) lines.push('Nothing scheduled yet.');
+  rows.forEach(r => {
+    const len = [r.days, r.work].filter(Boolean).join(', ');
+    lines.push(`• ${r.dates}${len ? ` (${len})` : ''}: ${r.status}${r.det ? ' · ' + r.det : ''}`);
+  });
+  const hr = holidayRows();
+  if (hr.length) { lines.push('', 'Public holidays'); hr.forEach(h => lines.push(`• ${h.dates}: ${h.name} (${h.src})`)); }
+  return lines.join('\n');
+}
+function markdown() {
+  const cell = s => String(s).replace(/\|/g, '\\|');
+  const lines = [`**${cell(state.title || 'Travel Plan')}**${state.name ? ' · ' + cell(state.name) : ''} (${periodLabel()})`, '',
+    '| Dates | Length | Type | Details |', '|---|---|---|---|'];
+  tableRows().forEach(r => lines.push(`| ${r.dates} | ${[r.days, r.work].filter(Boolean).join(' · ')} | ${r.status} | ${cell(r.det)} |`));
+  holidayRows().forEach(h => lines.push(`| ${h.dates} | | Holiday (${h.src}) | ${cell(h.name)} |`));
+  return lines.join('\n');
+}
+
+/* =========================================================
+   Sidebar
+   ========================================================= */
+function syncSettings() {
+  $('title').value = state.title; $('name').value = state.name;
+  const lbl = s => { const [y, m] = s.split('-').map(Number); return `${MON[m - 1]} ${y}`; };
+  $('startLbl').textContent = lbl(state.start); $('endLbl').textContent = lbl(state.end);
+  document.querySelector(`input[name=ws][value="${state.weekStart}"]`).checked = true;
+  document.querySelector(`input[name=lang][value="${state.cnLang}"]`).checked = true;
+  $('showCN').checked = state.showCN; $('showUS').checked = state.showUS;
+  const n = monthList().length;
+  document.querySelectorAll('input[name=span]').forEach(r => { r.checked = Number(r.value) === n; });
+  document.querySelector(`input[name=lgpos][value="${state.legendPos || 'auto'}"]`).checked = true;
+}
+function periodOf(c) {
+  const f = s => { const [y, m] = s.split('-').map(Number); return [MON[m - 1], y]; };
+  const [a, ay] = f(c.start), [b, by] = f(c.end);
+  return c.start === c.end ? `${a} ${ay}` : ay === by ? `${a} – ${b} ${by}` : `${a} ${ay} – ${b} ${by}`;
+}
+const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5 6.5 12 13 4.5"/></svg>';
+function renderCals() {
+  const ids = Object.keys(lib.cals).sort((x, y) => (lib.cals[y].updated || 0) - (lib.cals[x].updated || 0));
+  $('calList').innerHTML = ids.map(id => {
+    const c = lib.cals[id], cur = id === lib.current, n = c.entries.length;
+    return `<li class="item cal${cur ? ' current' : ''}" data-cal="${id}" tabindex="0" aria-current="${cur}">
+      <span class="ck">${cur ? CHECK : ''}</span>
+      <span class="tx"><div class="t1">${esc(c.title || 'Untitled plan')}</div><div class="t2">${periodOf(c)} · ${n} entr${n === 1 ? 'y' : 'ies'}</div></span>
+      <button class="icon-btn" data-delcal="${id}" aria-label="Delete calendar" title="Delete calendar"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></li>`;
+  }).join('');
+}
+function renderList() {
+  const [a, b] = visibleRange();
+  const items = [...state.entries].sort((x, y) => x.start.localeCompare(y.start));
+  $('list').innerHTML = items.length ? items.map(e => `<li class="item${overlaps(e.start, e.end, a, b) ? '' : ' out'}${pop.id === e.id ? ' editing' : ''}" data-id="${e.id}" tabindex="0">
+      ${markerHtml(e)}
+      <span class="tx"><div class="t1">${esc(titleOf(e))}</div><div class="t2">${STACKED(e.type) ? labelOf(e) + ' · ' : ''}${fmtRange(e.start, e.end)}</div></span>
+      <button class="icon-btn" data-del="${e.id}" aria-label="Delete" title="Delete"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></li>`).join('')
+    : '<li class="empty-list">Nothing yet. Click a day on the calendar to add your first entry.</li>';
+  $('clearAll').hidden = !items.length;
+}
+function render() { save(); syncSettings(); syncDateFmt(); renderCard(); renderTable(); renderList(); renderCals(); }
+
+$('title').addEventListener('input', e => { state.title = e.target.value; save(); renderCard(); renderTable(); renderCals(); });
+$('name').addEventListener('input', e => { state.name = e.target.value; save(); renderCard(); renderTable(); });
+document.querySelectorAll('[data-step]').forEach(btn => btn.addEventListener('click', () => {
+  const [which, delta] = btn.dataset.step.split(',');
+  const shift = (s, n) => { let [y, m] = s.split('-').map(Number); m += n; while (m > 12) { m -= 12; y++; } while (m < 1) { m += 12; y--; } return `${y}-${pad(m)}`; };
+  const v = s => { const [y, m] = s.split('-').map(Number); return y * 12 + m; };
+  state[which] = shift(state[which], Number(delta));
+  if (which === 'start' && v(state.start) > v(state.end)) state.end = state.start;
+  if (which === 'end' && v(state.end) < v(state.start)) state.start = state.end;
+  if (v(state.end) - v(state.start) > 11) { if (which === 'start') state.end = shift(state.start, 11); else state.start = shift(state.end, -11); }
+  render();
+}));
+document.querySelectorAll('input[name=span]').forEach(r => r.addEventListener('change', e => {
+  let [y, m] = state.start.split('-').map(Number); m += Number(e.target.value) - 1;
+  while (m > 12) { m -= 12; y++; }
+  state.end = `${y}-${pad(m)}`; render();
+}));
+
+function switchCal(id) { closePop(); lib.current = id; state = lib.cals[id]; render(); }
+$('calList').addEventListener('click', e => {
+  const del = e.target.closest('[data-delcal]');
+  if (del) {
+    e.stopPropagation();
+    const id = del.dataset.delcal, gone = lib.cals[id];
+    delete lib.cals[id];
+    if (!Object.keys(lib.cals).length) { const nid = uid(); lib.cals[nid] = blankState(); }
+    if (lib.current === id) lib.current = Object.keys(lib.cals).sort((x, y) => (lib.cals[y].updated || 0) - (lib.cals[x].updated || 0))[0];
+    state = lib.cals[lib.current]; closePop(); render();
+    toast(`Deleted “${gone.title || 'Untitled plan'}”`, () => { lib.cals[id] = gone; switchCal(id); });
+    return;
+  }
+  const li = e.target.closest('[data-cal]');
+  if (li && li.dataset.cal !== lib.current) switchCal(li.dataset.cal);
+});
+$('calList').addEventListener('keydown', e => { const li = e.target.closest('[data-cal]'); if (li && e.key === 'Enter') switchCal(li.dataset.cal); });
+$('newCal').addEventListener('click', () => {
+  const id = uid(); lib.cals[id] = blankState(); switchCal(id);
+  $('title').focus(); $('title').select(); toast('New calendar. Give it a title.');
+});
+$('dupCal').addEventListener('click', () => {
+  const id = uid(), c = JSON.parse(JSON.stringify(state));
+  c.title = (state.title || 'Travel Plan') + ' copy'; c.entries.forEach(x => { x.id = uid(); });
+  lib.cals[id] = c; switchCal(id); toast('Duplicated');
+});
+$('exportCal').addEventListener('click', () => {
+  const data = JSON.stringify({ app: 'travel-calendar', version: 2, exported: new Date().toISOString(), calendar: state }, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+  a.download = fileBase() + '.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('Calendar file saved');
+});
+$('importCal').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const raw = JSON.parse(await f.text());
+    const list = Array.isArray(raw.calendars) ? raw.calendars : [raw.calendar || raw];
+    if (!list.every(c => c && Array.isArray(c.entries) && c.start && c.end)) throw new Error('shape');
+    let last;
+    list.forEach(c => { last = uid(); const n = normalize(JSON.parse(JSON.stringify(c))); n.updated = Date.now(); lib.cals[last] = n; });
+    switchCal(last);
+    toast(`Opened “${state.title || 'Untitled plan'}”`);
+  } catch (err) { console.error(err); toast('That file isn’t a Travel Calendar export.'); }
+});
+
+document.querySelectorAll('input[name=lgpos]').forEach(r => r.addEventListener('change', e => { state.legendPos = e.target.value; render(); }));
+document.querySelectorAll('input[name=ws]').forEach(r => r.addEventListener('change', e => { state.weekStart = Number(e.target.value); render(); }));
+document.querySelectorAll('input[name=lang]').forEach(r => r.addEventListener('change', e => { state.cnLang = e.target.value; render(); }));
+$('showCN').addEventListener('change', e => { state.showCN = e.target.checked; render(); });
+$('showUS').addEventListener('change', e => { state.showUS = e.target.checked; render(); });
+
+function removeEntry(id) {
+  const idx = state.entries.findIndex(x => x.id === id); if (idx < 0) return;
+  const [gone] = state.entries.splice(idx, 1);
+  if (pop.id === id) closePop();
+  render();
+  toast(`Deleted ${STACKED(gone.type) ? '“' + gone.note + '”' : CAT[gone.type].label.toLowerCase()}`, () => { state.entries.splice(idx, 0, gone); render(); });
+}
+$('list').addEventListener('click', e => {
+  const del = e.target.closest('[data-del]');
+  if (del) { e.stopPropagation(); removeEntry(del.dataset.del); return; }
+  const li = e.target.closest('.item[data-id]');
+  if (li) openEdit(li.dataset.id, li.getBoundingClientRect());
+});
+$('list').addEventListener('keydown', e => { const li = e.target.closest('.item[data-id]'); if (li && e.key === 'Enter') openEdit(li.dataset.id, li.getBoundingClientRect()); });
+$('clearAll').addEventListener('click', () => {
+  const backup = state.entries; state.entries = []; closePop(); render();
+  toast('Cleared all entries', () => { state.entries = backup; render(); });
+});
+
+/* =========================================================
+   Composer popover: one input for status, key day and key period
+   ========================================================= */
+const pop = { open: false, id: null };
+$('pCats').innerHTML = CATS.map(c => `<label title="${c.label}"><input type="radio" name="pcat" value="${c.id}"><span><i class="${c.id === 'key' ? 'multi' : ''}" style="--c:${c.color}"></i>${c.short}</span></label>`).join('');
+$('pColors').innerHTML = KEY_COLORS.map((c, i) => `<label><input type="radio" name="pcol" value="${c}" aria-label="Color ${i + 1}"><span style="--c:${c}"></span></label>`).join('');
+const popCat = () => document.querySelector('input[name=pcat]:checked').value;
+
+function syncPopUi() {
+  const cat = popCat();
+  const s = $('pFrom').value, t = $('pTo').value || s;
+  $('pColors').hidden = cat !== 'key';
+  $('pText').placeholder = CAT[cat].hint;
+  $('pText').classList.remove('err');
+  if (s) {
+    const [a, b] = t < s ? [t, s] : [s, t];
+    $('popWhen').textContent = fmtRange(a, b);
+    const n = dayCount(a, b);
+    $('popLen').textContent = n === 1 ? '1 day' : `${n} days`;
+  } else { $('popWhen').textContent = 'New entry'; $('popLen').textContent = ''; }
+  applyPick(currentPick());
+}
+function currentPick() {
+  if (!pop.open) return drag ? [drag.a, drag.b].sort() : null;
+  const s = $('pFrom').value, t = $('pTo').value || s;
+  return s ? [s, t].sort() : null;
+}
+function placePop(rect) {
+  const el = $('pop'); el.hidden = false;
+  if (innerWidth < 600) { el.classList.add('sheet'); return; }
+  el.classList.remove('sheet');
+  const pw = el.offsetWidth, ph = el.offsetHeight, vw = innerWidth, vh = innerHeight;
+  let left = Math.max(12, Math.min(vw - pw - 12, rect.left + rect.width / 2 - pw / 2));
+  let top = rect.bottom + 8, below = true;
+  if (top + ph > vh - 12) { top = rect.top - ph - 8; below = false; }
+  if (top < 12) { top = Math.max(12, Math.min(vh - ph - 12, rect.top)); left = Math.min(vw - pw - 12, rect.right + 10); }
+  el.style.left = left + 'px'; el.style.top = top + 'px';
+  el.style.transformOrigin = `${Math.max(0, Math.min(pw, rect.left + rect.width / 2 - left))}px ${below ? 0 : ph}px`;
+}
+function openPop(data, rect) {
+  pop.open = true; pop.id = data.id || null;
+  $('pFrom').value = data.start || ''; $('pTo').value = data.end || data.start || '';
+  document.querySelector(`input[name=pcat][value="${data.type || state.lastCat || 'travel'}"]`).checked = true;
+  const col = data.color || state.lastColor || KEY_COLORS[0];
+  (document.querySelector(`input[name=pcol][value="${col}"]`) || document.querySelector('input[name=pcol]')).checked = true;
+  $('pText').value = data.note || '';
+  $('pDel').hidden = !pop.id;
+  $('pSave').textContent = pop.id ? 'Save' : 'Add';
+  syncPopUi();
+  const el = $('pop'); el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  placePop(rect);
+  renderList();
+  setTimeout(() => (data.start ? $('pText') : $('pFrom')).focus({ preventScroll: true }), 0);
+}
+function openEdit(id, rect) {
+  const e = state.entries.find(x => x.id === id); if (!e) return;
+  openPop({ ...e }, rect);
+}
+function closePop() {
+  if (!pop.open) return;
+  pop.open = false; pop.id = null; $('pop').hidden = true;
+  applyPick(null); renderList();
+}
+$('pop').addEventListener('submit', e => {
+  e.preventDefault();
+  let s = $('pFrom').value, t = $('pTo').value || s;
+  if (!s) { $('pFrom').focus(); return; }
+  if (t < s) [s, t] = [t, s];
+  const type = popCat();
+  let note = $('pText').value.trim();
+  if (type === 'flight') note = note.replace(/\s*(->|=>|→)\s*/g, ' → ');
+  if (STACKED(type) && !note) { $('pText').classList.add('err'); $('pText').placeholder = type === 'flight' ? 'Add the route, e.g. LAX → PVG' : 'Add a title for this key date'; $('pText').focus(); return; }
+  const data = { type, start: s, end: t, note };
+  if (type === 'key') { data.color = document.querySelector('input[name=pcol]:checked').value; state.lastColor = data.color; }
+  state.lastCat = type;
+  const wasEdit = !!pop.id;
+  if (wasEdit) { const x = state.entries.find(y => y.id === pop.id); Object.keys(x).forEach(k => { if (k !== 'id') delete x[k]; }); Object.assign(x, data); }
+  else state.entries.push({ id: uid(), ...data });
+  closePop(); render();
+  toast(wasEdit ? 'Saved' : `Added ${labelOf(data).toLowerCase()}`);
+});
+$('pCancel').addEventListener('click', closePop);
+$('pDel').addEventListener('click', () => { if (pop.id) removeEntry(pop.id); });
+document.querySelectorAll('input[name=pcat]').forEach(r => r.addEventListener('change', syncPopUi));
+['pFrom', 'pTo'].forEach(id => $(id).addEventListener('input', syncPopUi));
+$('pText').addEventListener('input', () => $('pText').classList.remove('err'));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && pop.open) closePop(); });
+document.addEventListener('pointerdown', e => {
+  if (!pop.open) return;
+  if (e.target.closest('#pop') || e.target.closest('#months') || e.target.closest('#list') || e.target.closest('#newBtn') || e.target.closest('#toast')) return;
+  closePop();
+});
+$('newBtn').addEventListener('click', e => {
+  const [a, b] = visibleRange();
+  const d = TODAY >= a && TODAY <= b ? iso(TODAY) : iso(a);
+  openPop({ start: d, end: d }, e.currentTarget.getBoundingClientRect());
+});
+
+/* Range highlight, applied without re-rendering */
+function applyPick(range) {
+  const cells = document.querySelectorAll('#months .cell[data-date]');
+  cells.forEach(c => c.classList.remove('pick', 'ps', 'pe'));
+  if (!range) return;
+  const [s, t] = range;
+  cells.forEach(c => { const k = c.dataset.date; if (k >= s && k <= t) c.classList.add('pick'); });
+  cells.forEach(c => {
+    if (!c.classList.contains('pick')) return;
+    const p = c.previousElementSibling, n = c.nextElementSibling;
+    if (!p || !p.classList.contains('pick')) c.classList.add('ps');
+    if (!n || !n.classList.contains('pick')) c.classList.add('pe');
+  });
+}
+
+/* Click a day = one day. Drag across days = a range. Click an item = edit it. */
+let drag = null;
+$('months').addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const item = e.target.closest('[data-id]');
+  if (item) {
+    e.preventDefault();
+    if (e.pointerType !== 'mouse') { openEdit(item.dataset.id, item.getBoundingClientRect()); return; }
+    const ent = state.entries.find(x => x.id === item.dataset.id); if (!ent) return;
+    const from = cellAt(e.clientX, e.clientY);
+    closePop();
+    move = { id: ent.id, ent, x: e.clientX, y: e.clientY, from: from && from.dataset.date, orig: { start: ent.start, end: ent.end }, delta: 0, active: false, rect: item.getBoundingClientRect() };
+    return;
+  }
+  const c = e.target.closest('.cell[data-date]'); if (!c) return;
+  closePop();
+  if (e.pointerType === 'mouse') {
+    e.preventDefault();
+    drag = { a: c.dataset.date, b: c.dataset.date };
+    document.body.classList.add('dragging');
+    applyPick([drag.a, drag.b]);
+  } else {
+    openPop({ start: c.dataset.date, end: c.dataset.date }, c.getBoundingClientRect());
+  }
+});
+/* Drag an item to move it: whole days, length kept, release on a new day. A plain click still edits. */
+let move = null;
+const cellAt = (x, y) => document.elementsFromPoint(x, y).find(el => {
+  if (!el.classList || !el.classList.contains('cell') || !el.dataset.date) return false;
+  const r = el.getBoundingClientRect(); return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
+});
+const shiftDay = (s, n) => iso(addDays(parse(s), n));
+function markLifted() { document.querySelectorAll(`#months [data-id="${move.id}"]`).forEach(el => el.classList.add('lifted')); }
+window.addEventListener('pointermove', e => {
+  if (!move) return;
+  if (!move.active) {
+    if (Math.hypot(e.clientX - move.x, e.clientY - move.y) < 5) return;
+    move.active = true; document.body.classList.add('moving'); markLifted();
+  }
+  const c = cellAt(e.clientX, e.clientY);
+  if (!c || !move.from) return;
+  const d = Math.round((parse(c.dataset.date) - parse(move.from)) / 864e5);
+  if (d === move.delta) return;
+  move.delta = d;
+  move.ent.start = shiftDay(move.orig.start, d); move.ent.end = shiftDay(move.orig.end, d);
+  renderCard(); markLifted();
+});
+window.addEventListener('pointerup', () => {
+  if (!move) return;
+  const m = move; move = null; document.body.classList.remove('moving');
+  if (!m.active) { openEdit(m.id, m.rect); return; }
+  if (m.delta === 0) { renderCard(); return; }
+  render();
+  toast(`Moved to ${fmtRange(m.ent.start, m.ent.end)}`, () => { m.ent.start = m.orig.start; m.ent.end = m.orig.end; render(); });
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !move) return;
+  move.ent.start = move.orig.start; move.ent.end = move.orig.end;
+  move = null; document.body.classList.remove('moving'); renderCard();
+});
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const c = el && el.closest('.cell[data-date]');
+  if (c && c.dataset.date !== drag.b) { drag.b = c.dataset.date; applyPick([drag.a, drag.b].sort()); }
+});
+window.addEventListener('pointerup', () => {
+  if (!drag) return;
+  const [s, t] = [drag.a, drag.b].sort();
+  drag = null; document.body.classList.remove('dragging');
+  const anchor = document.querySelector(`#months .cell[data-date="${t}"]`);
+  openPop({ start: s, end: t }, anchor.getBoundingClientRect());
+});
+$('months').addEventListener('keydown', e => {
+  const c = e.target.closest && e.target.closest('.cell[data-date]');
+  if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openPop({ start: c.dataset.date, end: c.dataset.date }, c.getBoundingClientRect()); }
+});
+
+/* =========================================================
+   Export
+   ========================================================= */
+let toastTimer, toastAction = null;
+function toast(msg, undo) {
+  const t = $('toast');
+  t.innerHTML = esc(msg) + (undo ? '<u>Undo</u>' : '');
+  t.classList.add('show');
+  toastAction = undo || null; t.style.pointerEvents = undo ? 'auto' : 'none'; t.style.cursor = undo ? 'pointer' : 'default';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.classList.remove('show'); toastAction = null; t.style.pointerEvents = 'none'; }, undo ? 6000 : 2200);
+}
+$('toast').addEventListener('click', () => { if (toastAction) { const a = toastAction; toastAction = null; a(); toast('Restored'); } });
+
+/* Export at a fixed, content-fitted width so the image has no empty margins */
+function exportWidth(node) {
+  if (node.id !== 'card') return Math.min(900, node.scrollWidth);
+  const n = monthList().length;
+  if (n === 3 || node.classList.contains('below')) return n === 1 ? 1100 : 1440; // legend below: go wide, not tall
+  return n === 1 ? 940 : 1160;
+}
+async function nodeBlob(node) {
+  if (!window.htmlToImage) throw new Error('lib');
+  closePop();
+  const prev = node.style.width;
+  document.body.classList.add('exporting');
+  node.style.width = exportWidth(node) + 'px';
+  if (node.id === 'card') arrange();
+  try {
+    // The clone keeps computed styles, so drop the centering margin or the image shifts right and crops.
+    const opts = {
+      pixelRatio: 2, backgroundColor: '#FFFFFF', width: node.offsetWidth, height: node.offsetHeight,
+      style: { margin: '0', maxWidth: 'none', transform: 'none' },
+    };
+    await htmlToImage.toBlob(node, opts); // warm-up pass (Safari draws text on the second pass)
+    return await htmlToImage.toBlob(node, opts);
+  } finally { node.style.width = prev; document.body.classList.remove('exporting'); if (node.id === 'card') arrange(); }
+}
+function exportFail(err) {
+  toast(err && err.message === 'lib' ? 'Export library didn’t load (offline?). Use ⌘⇧4 to screenshot.' : 'Couldn’t copy here. Try Download PNG.');
+}
+async function copyNode(node) {
+  try {
+    if (!window.htmlToImage) throw new Error('lib');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': nodeBlob(node) })]);
+    toast('Image copied. Paste it into your message.');
+  } catch (err) { console.error(err); exportFail(err); }
+}
+async function downloadNode(node, name) {
+  try {
+    const blob = await nodeBlob(node);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('PNG saved');
+  } catch (err) { console.error(err); exportFail(err); }
+}
+const fileBase = () => (state.title || 'travel-plan').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + state.start;
+$('copyImg').addEventListener('click', () => copyNode($('card')));
+$('dlImg').addEventListener('click', () => downloadNode($('card'), fileBase() + '.png'));
+$('copyTblImg').addEventListener('click', () => copyNode($('shareTable')));
+async function copyText(text, msg) {
+  try { await navigator.clipboard.writeText(text); toast(msg); }
+  catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast(msg); }
+}
+$('copyTxt').addEventListener('click', () => copyText(plainText(), 'Text copied'));
+
+/* Copy as a table: rich HTML (email, Docs, Notion, Teams, Lark) + tab-separated text (Excel, Sheets) */
+function tableData() {
+  const head = ['Dates', 'Length', 'Type', 'Details'];
+  const rows = tableRows().map(r => [r.dates, [r.days, r.work].filter(Boolean).join(' · '), r.status, r.det]);
+  holidayRows().forEach(h => rows.push([h.dates, '', `Holiday (${h.src})`, h.name]));
+  return { head, rows };
+}
+function tableHtml() {
+  const { head, rows } = tableData();
+  const font = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;";
+  const th = `style="${font}text-align:left;padding:6px 14px 6px 0;border-bottom:1px solid #C7C7CC;color:#6E6E73;font-weight:600;"`;
+  const td = `style="${font}padding:6px 14px 6px 0;border-bottom:1px solid #E5E5EA;color:#1D1D1F;vertical-align:top;"`;
+  const title = `${esc(state.title || 'Travel Plan')}${state.name ? ' · ' + esc(state.name) : ''} (${periodLabel()})`;
+  return `<p style="${font}font-weight:600;margin:0 0 8px;">${title}</p>`
+    + `<table style="border-collapse:collapse;"><thead><tr>${head.map(h => `<th ${th}>${h}</th>`).join('')}</tr></thead>`
+    + `<tbody>${rows.map(r => `<tr>${r.map(c => `<td ${td}>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+function tableTsv() {
+  const { head, rows } = tableData();
+  const clean = c => String(c).replace(/[\t\n]+/g, ' ');
+  return [head, ...rows].map(r => r.map(clean).join('\t')).join('\n');
+}
+$('copyTbl').addEventListener('click', async () => {
+  const html = tableHtml(), tsv = tableTsv();
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([tsv], { type: 'text/plain' }),
+    })]);
+    toast('Table copied. Paste into email, Docs, Notion or Sheets.');
+  } catch {
+    // fallback: select a rendered copy of the table and use the legacy copy command
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:-9999px;top:0;'; box.innerHTML = html; document.body.appendChild(box);
+    const range = document.createRange(); range.selectNodeContents(box);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    document.execCommand('copy'); sel.removeAllRanges(); box.remove();
+    toast('Table copied');
+  }
+});
+$('copyMd').addEventListener('click', () => copyText(markdown(), 'Markdown copied'));
+
+/* Resizable sidebar (width remembered per browser) */
+(() => {
+  const MIN = 260, MAX = 560, DEF = 320, KEYW = 'travel-calendar-side-w';
+  const el = $('resizer'), root = document.documentElement;
+  const set = w => { w = Math.round(Math.max(MIN, Math.min(MAX, w))); root.style.setProperty('--side-w', w + 'px'); return w; };
+  let w = DEF; try { w = Number(localStorage.getItem(KEYW)) || DEF; } catch {}
+  set(w);
+  const store = v => { try { localStorage.setItem(KEYW, String(v)); } catch {} };
+  let grab = null;
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    grab = { x: e.clientX, w: parseFloat(getComputedStyle(root).getPropertyValue('--side-w')) || DEF };
+    el.classList.add('active'); document.body.classList.add('resizing');
+  });
+  el.addEventListener('pointermove', e => { if (grab) { set(grab.w + e.clientX - grab.x); layoutCells(); } });
+  const end = () => {
+    if (!grab) return; grab = null;
+    el.classList.remove('active'); document.body.classList.remove('resizing');
+    store(parseFloat(getComputedStyle(root).getPropertyValue('--side-w'))); renderCard();
+  };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  el.addEventListener('dblclick', () => { store(set(DEF)); renderCard(); });
+  el.addEventListener('keydown', e => {
+    const cur = parseFloat(getComputedStyle(root).getPropertyValue('--side-w')) || DEF;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); store(set(cur + (e.key === 'ArrowRight' ? 20 : -20))); renderCard(); }
+  });
+})();
+
+let resizeRaf = 0;
+window.addEventListener('resize', () => { cancelAnimationFrame(resizeRaf); resizeRaf = requestAnimationFrame(arrange); });
+
+$('dateFmt').innerHTML = Object.entries(DATE_FMTS).map(([k, v]) => `<label title="Dates in the table and copied text"><input type="radio" name="dfmt" value="${k}"><span>${v}</span></label>`).join('');
+document.querySelectorAll('input[name=dfmt]').forEach(r => r.addEventListener('change', e => { state.dateFmt = e.target.value; save(); renderTable(); }));
+function syncDateFmt() { const r = document.querySelector(`input[name=dfmt][value="${state.dateFmt || 'text'}"]`); if (r) r.checked = true; }
+
+/* Boot */
+$('brandMon').textContent = MON[TODAY.getMonth()].toUpperCase();
+$('brandDay').textContent = TODAY.getDate();
+render();
+</script>
+</body>
+</html>
